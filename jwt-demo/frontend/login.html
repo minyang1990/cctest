@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Demo - Login</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-form">
+            <h2>JWT Authentication Demo</h2>
+            <p class="subtitle">Login to access protected content</p>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                    <small class="help-text">Try: admin, user, or demo</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                    <small class="help-text">Passwords: password123, userpass, demo123</small>
+                </div>
+                
+                <button type="submit" id="loginBtn">Login</button>
+            </form>
+            
+            <div id="message" class="message"></div>
+            
+            <div class="demo-info">
+                <h3>Demo Information</h3>
+                <p>This demo shows JWT authentication between a JavaScript frontend and .NET Core backend.</p>
+                <p><strong>Available accounts:</strong></p>
+                <ul>
+                    <li>admin / password123</li>
+                    <li>user / userpass</li>
+                    <li>demo / demo123</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        // Check if already logged in
+        if (AuthService.isAuthenticated()) {
+            window.location.href = 'index.html';
+        }
+
+        // Handle login form submission
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+            const loginBtn = document.getElementById('loginBtn');
+            
+            try {
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Logging in...';
+                messageDiv.textContent = '';
+                
+                const success = await AuthService.login(username, password);
+                if (success) {
+                    messageDiv.className = 'message success';
+                    messageDiv.textContent = 'Login successful! Redirecting...';
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    messageDiv.className = 'message error';
+                    messageDiv.textContent = 'Login failed. Please check your credentials.';
+                }
+            } catch (error) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Login error: ' + error.message;
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
+        });
+    </script>
+</body>
+</html>

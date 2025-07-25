@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Demo - Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>JWT Authentication Demo Dashboard</h1>
+            <div class="user-info">
+                <span>Welcome, <span id="username">Loading...</span></span>
+                <button id="logoutBtn" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="section">
+                <h2>JWT Token Information</h2>
+                <div class="token-info">
+                    <p><strong>Token Status:</strong> <span id="tokenStatus">Checking...</span></p>
+                    <p><strong>Expires:</strong> <span id="tokenExpiry">Loading...</span></p>
+                    <button id="validateTokenBtn">Validate Token</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>User Profile</h2>
+                <div id="profileData" class="data-section">
+                    <button id="loadProfileBtn">Load Profile Data</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Protected Data</h2>
+                <div id="protectedData" class="data-section">
+                    <button id="loadDataBtn">Load Protected Data</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>API Action</h2>
+                <div class="action-section">
+                    <input type="text" id="actionInput" placeholder="Enter some data">
+                    <button id="performActionBtn">Perform Protected Action</button>
+                    <div id="actionResult" class="data-section"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>JWT Flow Demonstration</h2>
+                <div class="flow-info">
+                    <ol>
+                        <li><strong>Login:</strong> You provided credentials and received a JWT token</li>
+                        <li><strong>Storage:</strong> Token is stored in localStorage</li>
+                        <li><strong>Usage:</strong> Token is automatically sent with each API request</li>
+                        <li><strong>Validation:</strong> Server validates token signature and expiry</li>
+                        <li><strong>Access:</strong> Protected resources are accessible with valid token</li>
+                    </ol>
+                </div>
+            </div>
+        </main>
+
+        <div id="message" class="message"></div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        // Check authentication on page load
+        if (!AuthService.isAuthenticated()) {
+            window.location.href = 'login.html';
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            initializePage();
+            setupEventListeners();
+        });
+
+        function initializePage() {
+            const tokenData = AuthService.getTokenData();
+            if (tokenData) {
+                document.getElementById('username').textContent = tokenData.username || 'Unknown';
+                document.getElementById('tokenExpiry').textContent = new Date(tokenData.expires).toLocaleString();
+                
+                // Check token status
+                const now = new Date();
+                const expiry = new Date(tokenData.expires);
+                const isExpired = now > expiry;
+                
+                document.getElementById('tokenStatus').textContent = isExpired ? 'Expired' : 'Valid';
+                document.getElementById('tokenStatus').className = isExpired ? 'status-error' : 'status-success';
+            }
+        }
+
+        function setupEventListeners() {
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                AuthService.logout();
+                window.location.href = 'login.html';
+            });
+
+            document.getElementById('validateTokenBtn').addEventListener('click', validateToken);
+            document.getElementById('loadProfileBtn').addEventListener('click', loadProfile);
+            document.getElementById('loadDataBtn').addEventListener('click', loadProtectedData);
+            document.getElementById('performActionBtn').addEventListener('click', performAction);
+        }
+
+        async function validateToken() {
+            try {
+                const response = await ApiService.post('/auth/validate', {});
+                showMessage('Token validation successful', 'success');
+                document.getElementById('tokenStatus').textContent = 'Valid';
+                document.getElementById('tokenStatus').className = 'status-success';
+            } catch (error) {
+                showMessage('Token validation failed: ' + error.message, 'error');
+                document.getElementById('tokenStatus').textContent = 'Invalid';
+                document.getElementById('tokenStatus').className = 'status-error';
+            }
+        }
+
+        async function loadProfile() {
+            try {
+                const response = await ApiService.get('/protected/profile');
+                const profileDiv = document.getElementById('profileData');
+                profileDiv.innerHTML = `
+                    <h3>Profile Information</h3>
+                    <p><strong>Username:</strong> ${response.data.username}</p>
+                    <p><strong>User ID:</strong> ${response.data.userId}</p>
+                    <p><strong>Role:</strong> ${response.data.role}</p>
+                    <p><strong>Last Login:</strong> ${new Date(response.data.lastLogin).toLocaleString()}</p>
+                    <p><strong>Permissions:</strong> ${response.data.permissions.join(', ')}</p>
+                `;
+                showMessage('Profile loaded successfully', 'success');
+            } catch (error) {
+                showMessage('Failed to load profile: ' + error.message, 'error');
+            }
+        }
+
+        async function loadProtectedData() {
+            try {
+                const response = await ApiService.get('/protected/data');
+                const dataDiv = document.getElementById('protectedData');
+                dataDiv.innerHTML = `
+                    <h3>Protected Data</h3>
+                    <p><strong>Accessed By:</strong> ${response.data.accessedBy}</p>
+                    <p><strong>Access Time:</strong> ${new Date(response.data.accessTime).toLocaleString()}</p>
+                    <p><strong>Secret Data:</strong> ${response.data.secretData}</p>
+                    <p><strong>Numbers:</strong> ${response.data.numbers.join(', ')}</p>
+                    <p><strong>Settings:</strong></p>
+                    <ul>
+                        <li>Theme: ${response.data.settings.theme}</li>
+                        <li>Language: ${response.data.settings.language}</li>
+                        <li>Notifications: ${response.data.settings.notifications}</li>
+                    </ul>
+                `;
+                showMessage('Protected data loaded successfully', 'success');
+            } catch (error) {
+                showMessage('Failed to load protected data: ' + error.message, 'error');
+            }
+        }
+
+        async function performAction() {
+            const actionData = document.getElementById('actionInput').value;
+            if (!actionData.trim()) {
+                showMessage('Please enter some data for the action', 'error');
+                return;
+            }
+
+            try {
+                const response = await ApiService.post('/protected/action', { 
+                    action: 'demo_action',
+                    data: actionData,
+                    timestamp: new Date().toISOString()
+                });
+                
+                const resultDiv = document.getElementById('actionResult');
+                resultDiv.innerHTML = `
+                    <h3>Action Result</h3>
+                    <p><strong>Performed By:</strong> ${response.data.performedBy}</p>
+                    <p><strong>Action Time:</strong> ${new Date(response.data.actionTime).toLocaleString()}</p>
+                    <p><strong>Result:</strong> ${response.data.result}</p>
+                    <p><strong>Your Data:</strong> ${JSON.stringify(response.data.actionData, null, 2)}</p>
+                `;
+                
+                document.getElementById('actionInput').value = '';
+                showMessage('Action performed successfully', 'success');
+            } catch (error) {
+                showMessage('Failed to perform action: ' + error.message, 'error');
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = 'message';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
